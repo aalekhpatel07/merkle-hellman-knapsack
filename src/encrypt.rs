@@ -1,14 +1,9 @@
-use std::ops::{BitAnd};
+use std::ops::BitAnd;
 
-use bytes::{Bytes, BytesMut, BufMut};
+use crate::util::{gcd, modinverse, mul_mod, mul_mod_u64};
+use bytes::{BufMut, Bytes, BytesMut};
 use rand::prelude::*;
 use thiserror::Error;
-use crate::util::{
-    modinverse,
-    gcd,
-    mul_mod,
-    mul_mod_u64
-};
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum MerkleHellmanError {
@@ -25,31 +20,27 @@ pub enum MerkleHellmanError {
     #[error("Found a partial block in ciphertext. This is malformed data. We operate on blocks of 64 bytes in the ciphertext.")]
     FoundAnImcompleteBlockInCiphertext,
     #[error("The ciphertext {0} is malformed and has no solution to the superincreasing knapsack problem.")]
-    BadCipherText(u64)
+    BadCipherText(u64),
 }
 
 pub type Result<T> = std::result::Result<T, MerkleHellmanError>;
 pub type Error = MerkleHellmanError;
-
 
 pub trait Encrypt {
     /// Ability to encrypts the given plaintext fallibly.
     fn encrypt(&self, data: &Bytes) -> Result<Bytes>;
 }
 
-
 pub trait Decrypt {
     /// Ability to decrypt the given ciphertext fallibly.
     fn decrypt(&self, data: &Bytes) -> Result<Bytes>;
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SuperIncreasingKnapSack {
     pub sequence: Vec<u64>,
     total: u64,
 }
-
 
 impl Default for SuperIncreasingKnapSack {
     fn default() -> Self {
@@ -58,9 +49,7 @@ impl Default for SuperIncreasingKnapSack {
     }
 }
 
-
 impl SuperIncreasingKnapSack {
-
     pub fn new(sequence: &[u64]) -> Self {
         Self {
             sequence: sequence.to_vec(),
@@ -69,7 +58,6 @@ impl SuperIncreasingKnapSack {
     }
 
     pub fn from_rng<R: RngCore, const N: usize>(rng: &mut R) -> Self {
-
         let mut sequence = [0u64; N];
         let mut sum: u64 = 0;
 
@@ -85,8 +73,7 @@ impl SuperIncreasingKnapSack {
         }
     }
 
-    pub fn solve(&self, target: u64) -> Result<u64> 
-    {
+    pub fn solve(&self, target: u64) -> Result<u64> {
         let mut remaining = target;
         let mut selection: u64 = 0;
 
@@ -98,9 +85,11 @@ impl SuperIncreasingKnapSack {
         }
 
         if remaining != 0 {
-            return Err(MerkleHellmanError::BadCipherText(target.try_into().unwrap()));
+            return Err(MerkleHellmanError::BadCipherText(
+                target.try_into().unwrap(),
+            ));
         }
-        
+
         Ok(selection)
     }
 }
@@ -112,29 +101,25 @@ pub struct GeneralKnapSack {
 
 impl From<Vec<u64>> for GeneralKnapSack {
     fn from(sequence: Vec<u64>) -> Self {
-        Self {
-            sequence
-        }
+        Self { sequence }
     }
 }
 
-
-fn knapsack_eval<S, const N: usize>(selection: S, sequence: &[u64]) -> u64 
-where 
-    S: BitAnd<u64, Output = u64> + Copy
+fn knapsack_eval<S, const N: usize>(selection: S, sequence: &[u64]) -> u64
+where
+    S: BitAnd<u64, Output = u64> + Copy,
 {
     (0..N)
-    .filter_map(|i| {
-        let is_bit_set = selection & (1 << i) != 0;
-        if is_bit_set {
-            Some(sequence[N - 1 - i])
-        } else {
-            None
-        }
-    })
-    .sum()
+        .filter_map(|i| {
+            let is_bit_set = selection & (1 << i) != 0;
+            if is_bit_set {
+                Some(sequence[N - 1 - i])
+            } else {
+                None
+            }
+        })
+        .sum()
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MerkleHellman<const N: usize> {
@@ -155,33 +140,21 @@ pub struct MerkleHellmanPublicKey<const N: usize> {
     knapsack: GeneralKnapSack,
 }
 
-
-
 impl<const N: usize> MerkleHellman<N> {
-
-    pub fn new(
-        sequence: &[u64; N],
-        factor: u64,
-        modulus: u64,
-    ) -> Result<Self> {
-        Self::from_superincreasing_knapsack(
-            SuperIncreasingKnapSack::new(sequence),
-            factor, 
-            modulus
-        )
+    pub fn new(sequence: &[u64; N], factor: u64, modulus: u64) -> Result<Self> {
+        Self::from_superincreasing_knapsack(SuperIncreasingKnapSack::new(sequence), factor, modulus)
     }
 
     pub fn from_rng<R: RngCore>(rng: &mut R) -> Self {
         let si = SuperIncreasingKnapSack::from_rng::<_, 32>(rng);
-        let modulus = rng.gen_range(si.total+1..u64::MAX << 16);
+        let modulus = rng.gen_range(si.total + 1..u64::MAX << 16);
         let factor = {
-            let mut factor = rng.gen_range(2 ..= 1 << 16);
+            let mut factor = rng.gen_range(2..=1 << 16);
             while gcd(factor, modulus) != 1 {
-                factor = rng.gen_range(2 ..= 1 << 16);
+                factor = rng.gen_range(2..=1 << 16);
             }
             factor
         };
-
 
         let result = Self::from_superincreasing_knapsack(si, factor, modulus);
         if result.is_err() {
@@ -195,28 +168,26 @@ impl<const N: usize> MerkleHellman<N> {
         factor: u64,
         modulus: u64,
     ) -> Result<Self> {
-
-        let general_knapsack = 
-            si
+        let general_knapsack = si
             .sequence
             .iter()
             .map(|&x| mul_mod(x, factor, modulus))
             .collect::<Vec<_>>()
             .into();
 
-        let factor_inverse =
-            modinverse(factor, modulus)
-            .ok_or(MerkleHellmanError::SpecifiedFactorIsNotInvertibleForGivenModulus(factor, modulus))?;
+        let factor_inverse = modinverse(factor, modulus).ok_or(
+            MerkleHellmanError::SpecifiedFactorIsNotInvertibleForGivenModulus(factor, modulus),
+        )?;
 
         let private_key = MerkleHellmanPrivateKey {
             knapsack: si,
             factor,
             modulus,
-            factor_inverse
+            factor_inverse,
         };
 
         let public_key = MerkleHellmanPublicKey {
-            knapsack: general_knapsack
+            knapsack: general_knapsack,
         };
 
         Ok(Self {
@@ -225,7 +196,6 @@ impl<const N: usize> MerkleHellman<N> {
         })
     }
 }
-
 
 impl Default for MerkleHellman<32> {
     fn default() -> Self {
@@ -240,7 +210,6 @@ impl<const N: usize> Encrypt for MerkleHellman<N> {
     }
 }
 
-
 impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
     /// Encrypts a message using the Merkle-Hellman Knapsack Cryptosystem.
     /// Note:
@@ -248,7 +217,7 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
     ///      are cryptographically insecure as they map the plaintext to itself as a ciphertext.
     fn encrypt(&self, data: &Bytes) -> Result<Bytes> {
         let mut bytes = BytesMut::new();
-        
+
         if N == 0 {
             return Err(Error::TooShortBlockSize);
         }
@@ -264,16 +233,18 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
         let remainder_chunk = exact_chunks.remainder();
 
         for (idx, block) in exact_chunks.enumerate() {
-
             let num = match N {
                 8 => u8::from_le_bytes([block[0]]) as u64,
                 16 => u16::from_le_bytes([block[0], block[1]]) as u64,
                 32 => u32::from_le_bytes([block[0], block[1], block[2], block[3]]) as u64,
-                _ => unreachable!("N should be 8, 16, or 32.")
+                _ => unreachable!("N should be 8, 16, or 32."),
             };
             let idx = idx as u64;
             if num == 0 {
-                return Err(Error::NullByteBlockFound(block_size * idx, block_size * idx + block_size));
+                return Err(Error::NullByteBlockFound(
+                    block_size * idx,
+                    block_size * idx + block_size,
+                ));
             }
             let computed_value = knapsack_eval::<u64, N>(num, &self.knapsack.sequence);
             bytes.put_u64(computed_value);
@@ -294,11 +265,14 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
                     8 => u8::from_le_bytes([block[0]]) as u64,
                     16 => u16::from_le_bytes([block[0], block[1]]) as u64,
                     32 => u32::from_le_bytes([block[0], block[1], block[2], block[3]]) as u64,
-                    _ => unreachable!("N should be 8, 16, or 32.")
+                    _ => unreachable!("N should be 8, 16, or 32."),
                 };
 
                 if num == 0 {
-                    return Err(Error::NullByteBlockFound(block_size * last_chunk_block_index, block_size * last_chunk_block_index + remainder_chunk.len() as u64));
+                    return Err(Error::NullByteBlockFound(
+                        block_size * last_chunk_block_index,
+                        block_size * last_chunk_block_index + remainder_chunk.len() as u64,
+                    ));
                 }
                 let computed_value = knapsack_eval::<u64, N>(num, &self.knapsack.sequence);
                 bytes.put_u64(computed_value);
@@ -308,7 +282,6 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
         Ok(bytes.into())
     }
 }
-
 
 impl<const N: usize> Decrypt for MerkleHellman<N> {
     fn decrypt(&self, data: &Bytes) -> Result<Bytes> {
@@ -328,7 +301,10 @@ impl<const N: usize> Decrypt for MerkleHellman<N> {
             let num = u64::from_be_bytes(dst);
             if num == 0 {
                 if idx != chunks_len - 1 {
-                    return Err(Error::NullByteBlockFound(idx as u64 * block_size, (idx as u64 + 1) * block_size));
+                    return Err(Error::NullByteBlockFound(
+                        idx as u64 * block_size,
+                        (idx as u64 + 1) * block_size,
+                    ));
                 }
                 break;
             }
@@ -339,15 +315,15 @@ impl<const N: usize> Decrypt for MerkleHellman<N> {
                 8 => {
                     let knapsack_solution = self.priv_key.knapsack.solve(num)?;
                     messages.put_u8(knapsack_solution as u8);
-                },
+                }
                 16 => {
                     let knapsack_solution = self.priv_key.knapsack.solve(num)?;
                     messages.put_u16(knapsack_solution as u16);
-                },
+                }
                 32 => {
                     let knapsack_solution = self.priv_key.knapsack.solve(num)?;
                     messages.put_u32(knapsack_solution as u32);
-                },
+                }
                 _ => {}
             }
         }
@@ -359,8 +335,8 @@ impl<const N: usize> Decrypt for MerkleHellman<N> {
 pub mod tests {
 
     use super::*;
-    use test_case::test_case;
     use proptest::prelude::*;
+    use test_case::test_case;
 
     impl Arbitrary for SuperIncreasingKnapSack {
         type Parameters = ();
@@ -378,7 +354,6 @@ pub mod tests {
             prop_oneof![Just(si)].boxed()
         }
     }
-
 
     #[test]
     fn test_default_merkle_hellman() {
@@ -437,8 +412,8 @@ pub mod tests {
             Error::NullByteBlockFound(start, end) => {
                 assert_eq!(start, error_start);
                 assert_eq!(end, error_end);
-            },
-            _ => panic!("Unexpected error")
+            }
+            _ => panic!("Unexpected error"),
         }
     }
 
@@ -453,11 +428,7 @@ pub mod tests {
     /// This is the encryption example from [Lattice Reduction Attack on the Knapsack]
     /// [1]: http://www.cs.sjsu.edu/faculty/stamp/papers/topics/topic16/Knapsack.pdf
     fn test_merkle_hellman_from_knapsack(data: Vec<u8>, ciphertext: u64) {
-        let mh = MerkleHellman::new(
-            &[2, 3, 7, 14, 30, 57, 120, 251],
-            41,
-            491
-        ).unwrap();
+        let mh = MerkleHellman::new(&[2, 3, 7, 14, 30, 57, 120, 251], 41, 491).unwrap();
         let data = Bytes::from(data);
         let encrypted = mh.encrypt(&data).unwrap().to_vec();
         let (first, _) = encrypted.split_at(8);
@@ -539,7 +510,7 @@ pub mod tests {
                 } else {
                     let obtained: [u8; 4] = mh.decrypt(&mh.encrypt(&raw).expect("Should encrypt alright")).expect("Should decrypt alright").to_vec().try_into().expect("Should fit in 4 bytes");
                     prop_assert_eq!(
-                        u32::from_le_bytes(raw.to_vec().try_into().unwrap()), 
+                        u32::from_le_bytes(raw.to_vec().try_into().unwrap()),
                         u32::from_be_bytes(obtained)
                     );
                 }
