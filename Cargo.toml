@@ -2,6 +2,8 @@
 name = "crypto-knapsack"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE.md"
+authors = ["Aalekh Patel <aalekh.gwpeck.7998@icloud.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,3 +15,7 @@ thiserror = "1.0.38"
 [dev-dependencies]
 proptest = "1.0.0"
 test-case = "2.2.2"
+
+
+[profile.release]
+lto = "fat"
