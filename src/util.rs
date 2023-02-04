@@ -95,7 +95,7 @@ mod test {
     #[test]
     fn foo() {
         let x = 2usize;
-        let y: i128 = i128::try_from(x).unwrap();
+        let _y: i128 = i128::try_from(x).unwrap();
     }
 
     proptest! {

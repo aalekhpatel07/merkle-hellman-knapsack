@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOrAssign};
+use std::ops::{BitAnd};
 
 use bytes::{Bytes, BytesMut, BufMut};
 use rand::prelude::*;
@@ -74,7 +74,7 @@ impl SuperIncreasingKnapSack {
         let mut sum: u64 = 0;
 
         for idx in 0..N {
-            let next: u64 = rng.gen_range((sum + 1)..=((sum + 1) + (1 << 4))) as u64;
+            let next: u64 = rng.gen_range((sum + 1)..=((sum + 1) + (1 << 4)));
             sequence[idx] = next;
             sum += next;
         }
@@ -91,9 +91,9 @@ impl SuperIncreasingKnapSack {
         let mut selection: u64 = 0;
 
         for (index, &value) in self.sequence.iter().rev().enumerate() {
-            if remaining >= value as u64 {
+            if remaining >= value {
                 selection |= 1 << index;
-                remaining -= value as u64;
+                remaining -= value;
             }
         }
 
@@ -166,14 +166,14 @@ impl<const N: usize> MerkleHellman<N> {
     ) -> Result<Self> {
         Self::from_superincreasing_knapsack(
             SuperIncreasingKnapSack::new(sequence),
-            factor as u64, 
-            modulus as u64
+            factor, 
+            modulus
         )
     }
 
     pub fn from_rng<R: RngCore>(rng: &mut R) -> Self {
         let si = SuperIncreasingKnapSack::from_rng::<_, 32>(rng);
-        let modulus = rng.gen_range(si.total+1..u64::MAX << 16) as u64;
+        let modulus = rng.gen_range(si.total+1..u64::MAX << 16);
         let factor = {
             let mut factor = rng.gen_range(2 ..= 1 << 16);
             while gcd(factor, modulus) != 1 {
@@ -206,9 +206,7 @@ impl<const N: usize> MerkleHellman<N> {
 
         let factor_inverse =
             modinverse(factor, modulus)
-            .ok_or_else(
-                || MerkleHellmanError::SpecifiedFactorIsNotInvertibleForGivenModulus(factor, modulus)
-            )?;
+            .ok_or(MerkleHellmanError::SpecifiedFactorIsNotInvertibleForGivenModulus(factor, modulus))?;
 
         let private_key = MerkleHellmanPrivateKey {
             knapsack: si,
@@ -278,7 +276,7 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
                 return Err(Error::NullByteBlockFound(block_size * idx, block_size * idx + block_size));
             }
             let computed_value = knapsack_eval::<u64, N>(num, &self.knapsack.sequence);
-            bytes.put_u64(computed_value as u64);
+            bytes.put_u64(computed_value);
         }
 
         // We must always pad the last block with 0s on the right.
@@ -303,7 +301,7 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
                     return Err(Error::NullByteBlockFound(block_size * last_chunk_block_index, block_size * last_chunk_block_index + remainder_chunk.len() as u64));
                 }
                 let computed_value = knapsack_eval::<u64, N>(num, &self.knapsack.sequence);
-                bytes.put_u64(computed_value as u64);
+                bytes.put_u64(computed_value);
             }
         }
 
@@ -335,7 +333,7 @@ impl<const N: usize> Decrypt for MerkleHellman<N> {
                 break;
             }
 
-            let num = mul_mod_u64(num, self.priv_key.factor_inverse as u64, self.priv_key.modulus as u64);
+            let num = mul_mod_u64(num, self.priv_key.factor_inverse, self.priv_key.modulus);
 
             match N {
                 8 => {
