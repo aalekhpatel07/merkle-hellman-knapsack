@@ -24,7 +24,7 @@ mod tests {
     use test_case::test_case;
     use bytes::Bytes;
     use crate::*;
-    
+
     #[test_case(vec![0]; "single 0")]
     fn test_encrypt_and_decrypt(data: Vec<u8>) {
         let mut rng = rand::thread_rng();

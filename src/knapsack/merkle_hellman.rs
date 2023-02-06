@@ -3,7 +3,8 @@ use crate::knapsack::{
     SuperIncreasingKnapSack,
     MerkleHellmanPrivateKey,
     MerkleHellmanPublicKey,
-    Result
+    Result,
+    GeneralKnapSack
 };
 use rand::{Rng, RngCore};
 use crate::util::{
@@ -51,8 +52,7 @@ impl<const N: usize> MerkleHellman<N> {
             .sequence
             .iter()
             .map(|&x| mul_mod(x, factor, modulus))
-            .collect::<Vec<_>>()
-            .into();
+            .collect::<GeneralKnapSack>();
 
         let factor_inverse = modinverse(factor, modulus).ok_or(
             MerkleHellmanError::SpecifiedFactorIsNotInvertibleForGivenModulus(factor, modulus),

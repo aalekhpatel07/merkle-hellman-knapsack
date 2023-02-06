@@ -27,11 +27,12 @@ impl SuperIncreasingKnapSack {
         let mut sequence = [0u64; N];
         let mut sum: u64 = 0;
 
-        for idx in 0..N {
+        (0..N)
+        .for_each(|idx| {
             let next: u64 = rng.gen_range((sum + 1)..=((sum + 1) + (1 << 4)));
             sequence[idx] = next;
             sum += next;
-        }
+        });
 
         Self {
             sequence: sequence.into(),
@@ -51,9 +52,7 @@ impl SuperIncreasingKnapSack {
         }
 
         if remaining != 0 {
-            return Err(MerkleHellmanError::BadCipherText(
-                target.try_into().unwrap(),
-            ));
+            return Err(MerkleHellmanError::BadCipherText(target));
         }
 
         Ok(selection)
@@ -68,6 +67,14 @@ pub struct GeneralKnapSack {
 impl From<Vec<u64>> for GeneralKnapSack {
     fn from(sequence: Vec<u64>) -> Self {
         Self { sequence }
+    }
+}
+
+impl FromIterator<u64> for GeneralKnapSack {
+    fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
+        Self {
+            sequence: iter.into_iter().collect(),
+        }
     }
 }
 
