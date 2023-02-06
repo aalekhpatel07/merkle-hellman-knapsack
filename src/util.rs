@@ -84,12 +84,6 @@ mod test {
         assert!((a as i128) % g == 0);
     }
 
-    #[test]
-    fn foo() {
-        let x = 2usize;
-        let _y: i128 = i128::try_from(x).unwrap();
-    }
-
     proptest! {
         #[test]
         fn test_modular_inverse(
