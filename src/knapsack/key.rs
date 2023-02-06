@@ -1,9 +1,4 @@
-use crate::knapsack::{
-    SuperIncreasingKnapSack,
-    GeneralKnapSack
-};
-
-
+use crate::knapsack::{GeneralKnapSack, SuperIncreasingKnapSack};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MerkleHellmanPrivateKey<const N: usize> {
@@ -18,12 +13,11 @@ pub struct MerkleHellmanPublicKey<const N: usize> {
     pub knapsack: GeneralKnapSack,
 }
 
-
 #[cfg(test)]
 mod tests {
-    use test_case::test_case;
-    use bytes::Bytes;
     use crate::*;
+    use bytes::Bytes;
+    use test_case::test_case;
 
     #[test_case(vec![0]; "single 0")]
     fn test_encrypt_and_decrypt(data: Vec<u8>) {

@@ -1,18 +1,9 @@
 use crate::knapsack::{
-    MerkleHellmanError,
+    GeneralKnapSack, MerkleHellmanError, MerkleHellmanPrivateKey, MerkleHellmanPublicKey, Result,
     SuperIncreasingKnapSack,
-    MerkleHellmanPrivateKey,
-    MerkleHellmanPublicKey,
-    Result,
-    GeneralKnapSack
 };
+use crate::util::{gcd, modinverse, mul_mod};
 use rand::{Rng, RngCore};
-use crate::util::{
-    gcd,
-    modinverse,
-    mul_mod
-};
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MerkleHellman<const N: usize> {
@@ -83,14 +74,12 @@ impl Default for MerkleHellman<32> {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use test_case::test_case;
     use bytes::Bytes;
     use proptest::prelude::*;
+    use test_case::test_case;
 
     #[test]
     fn test_merkle_hellman_from_rng() {
@@ -103,8 +92,6 @@ mod tests {
         assert_eq!(mh.pub_key.knapsack.sequence.len(), 32);
         assert_eq!(mh.priv_key.knapsack.sequence.len(), 32);
     }
-
-
 
     #[test_case(vec![150], 548; "single 150")]
     #[test_case(vec![1], 471; "single 1")]
@@ -123,7 +110,6 @@ mod tests {
         let decrypted = mh.decrypt(&Bytes::from(encrypted)).unwrap();
         assert_eq!(data, decrypted);
     }
-
 
     proptest! {
 
@@ -169,5 +155,4 @@ mod tests {
             }
         }
     }
-
 }

@@ -1,16 +1,11 @@
-use crate::knapsack::{
-    Result,
-    MerkleHellman,
-    Error,
-};
-use bytes::{Bytes, BytesMut, BufMut};
+use crate::knapsack::{Error, MerkleHellman, Result};
 use crate::util::mul_mod_u64;
+use bytes::{BufMut, Bytes, BytesMut};
 
 pub trait Decrypt {
     /// Ability to decrypt the given ciphertext fallibly.
     fn decrypt(&self, data: &Bytes) -> Result<Bytes>;
 }
-
 
 impl<const N: usize> Decrypt for MerkleHellman<N> {
     fn decrypt(&self, data: &Bytes) -> Result<Bytes> {

@@ -1,25 +1,16 @@
-use crate::knapsack::{
-    Result,
-    MerkleHellman, 
-    MerkleHellmanPublicKey,
-    Error,
-    knapsack_eval,
-};
-use bytes::{Bytes, BytesMut, BufMut};
-
+use crate::knapsack::{knapsack_eval, Error, MerkleHellman, MerkleHellmanPublicKey, Result};
+use bytes::{BufMut, Bytes, BytesMut};
 
 pub trait Encrypt {
     /// Ability to encrypts the given plaintext fallibly.
     fn encrypt(&self, data: &Bytes) -> Result<Bytes>;
 }
 
-
 impl<const N: usize> Encrypt for MerkleHellman<N> {
     fn encrypt(&self, data: &Bytes) -> Result<Bytes> {
         self.pub_key.encrypt(data)
     }
 }
-
 
 impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
     /// Encrypts a message using the Merkle-Hellman Knapsack Cryptosystem.
@@ -96,10 +87,10 @@ impl<const N: usize> Encrypt for MerkleHellmanPublicKey<N> {
 
 #[cfg(test)]
 mod tests {
-    use test_case::test_case;
     use crate::*;
-    use rand::SeedableRng;
     use bytes::Bytes;
+    use rand::SeedableRng;
+    use test_case::test_case;
 
     #[test_case(
         "hell", 

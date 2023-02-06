@@ -1,11 +1,7 @@
-
-
 pub type Result<T> = std::result::Result<T, MerkleHellmanError>;
 pub type Error = MerkleHellmanError;
 
-
 use thiserror::Error;
-
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum MerkleHellmanError {

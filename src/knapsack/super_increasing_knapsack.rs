@@ -1,6 +1,6 @@
-use core::ops::BitAnd;
-use rand::{RngCore, Rng};
 use crate::knapsack::{MerkleHellmanError, Result};
+use core::ops::BitAnd;
+use rand::{Rng, RngCore};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SuperIncreasingKnapSack {
@@ -27,8 +27,7 @@ impl SuperIncreasingKnapSack {
         let mut sequence = [0u64; N];
         let mut sum: u64 = 0;
 
-        (0..N)
-        .for_each(|idx| {
+        (0..N).for_each(|idx| {
             let next: u64 = rng.gen_range((sum + 1)..=((sum + 1) + (1 << 4)));
             sequence[idx] = next;
             sum += next;
@@ -94,12 +93,10 @@ where
         .sum()
 }
 
-
 #[cfg(test)]
 mod tests {
-    use proptest::prelude::*;
     use crate::*;
-
+    use proptest::prelude::*;
 
     #[test]
     fn test_superincreasing_knapsack() {
@@ -130,7 +127,6 @@ mod tests {
             prop_oneof![Just(si)].boxed()
         }
     }
-
 
     proptest! {
 
